@@ -7,20 +7,11 @@ from tkinter import messagebox
 class MathsQuizApp:
     TOTAL_QUESTIONS = 10
 
-    # Simple colour palette for the whole app
-    BG_COLOR = "#eef4fb"
-    CARD_BG = "#ffffff"
-    BTN_BLUE = "#2b5b84"
-    BTN_GREEN = "#2e7d5b"
-    BTN_RED = "#c0392b"
-    TEXT_DARK = "#172536"
-    TEXT_MUTED = "#52657a"
-
     def __init__(self, root):
         self.root = root
         self.root.title("Exercise 1 - Maths Quiz")
         self.root.geometry("500x370")
-        self.root.configure(bg=self.BG_COLOR)
+        self.root.configure(bg="#aac4e1")
 
         self.set_icon()
 
@@ -33,13 +24,12 @@ class MathsQuizApp:
         self.operator = "+"
         self.answer = 0
 
-        self.main_frame = tk.Frame(self.root, bg=self.BG_COLOR, padx=24, pady=20)
+        self.main_frame = tk.Frame(self.root, bg="#b3c9e2", padx=24, pady=20)
         self.main_frame.pack(fill="both", expand=True)
 
         self.displayMenu()
 
     def set_icon(self):
-        # Put icon-math_87982.ico in the same folder as this script
         script_dir = os.path.dirname(os.path.abspath(__file__))
         icon_path = os.path.join(script_dir, "icon-math_87982.ico")
 
@@ -62,16 +52,16 @@ class MathsQuizApp:
             self.main_frame,
             text="DIFFICULTY LEVEL",
             font=("Arial", 18, "bold"),
-            bg=self.BG_COLOR,
-            fg=self.BTN_BLUE,
+            bg="#a4bedb",
+            fg="#2b5b84",
         ).pack(pady=(8, 6))
 
         tk.Label(
             self.main_frame,
             text="Choose a level to start (10 questions):",
             font=("Arial", 10),
-            bg=self.BG_COLOR,
-            fg=self.TEXT_MUTED,
+            bg="#a2b9d3",
+            fg="#52657a",
         ).pack(pady=(0, 16))
 
         options = [
@@ -85,7 +75,7 @@ class MathsQuizApp:
                 self.main_frame,
                 text=label_text,
                 font=("Arial", 11, "bold"),
-                bg=self.BTN_BLUE,
+                bg="#2b5b84",
                 fg="white",
                 activebackground="#1f4463",
                 activeforeground="white",
@@ -104,15 +94,15 @@ class MathsQuizApp:
     def build_quiz_screen(self):
         self.clear_frame()
 
-        top_row = tk.Frame(self.main_frame, bg=self.BG_COLOR)
+        top_row = tk.Frame(self.main_frame, bg="#8f9fb1")
         top_row.pack(fill="x", pady=(0, 12))
 
         self.q_label = tk.Label(
             top_row,
             text=f"Question 1/{self.TOTAL_QUESTIONS}",
             font=("Arial", 10, "bold"),
-            bg=self.BG_COLOR,
-            fg=self.TEXT_DARK,
+            bg="#97ADC6",
+            fg="#172536",
         )
         self.q_label.pack(side="left")
 
@@ -120,14 +110,14 @@ class MathsQuizApp:
             top_row,
             text="Score: 0",
             font=("Arial", 10, "bold"),
-            bg=self.BG_COLOR,
-            fg=self.BTN_BLUE,
+            bg="#adc1d5",
+            fg="#2b5b84",
         )
         self.score_label.pack(side="right")
 
         box = tk.Frame(
             self.main_frame,
-            bg=self.CARD_BG,
+            bg="#f9f6f6",
             bd=1,
             relief="solid",
             padx=20,
@@ -139,8 +129,8 @@ class MathsQuizApp:
             box,
             text="",
             font=("Arial", 22, "bold"),
-            bg=self.CARD_BG,
-            fg=self.TEXT_DARK,
+            bg="#ffffff",
+            fg="#172536",
         )
         self.problem_label.pack()
 
@@ -148,8 +138,8 @@ class MathsQuizApp:
             self.main_frame,
             text="Enter your answer:",
             font=("Arial", 10),
-            bg=self.BG_COLOR,
-            fg=self.TEXT_DARK,
+            bg="#9db2c9",
+            fg="#172536",
         ).pack()
 
         self.answer_entry = tk.Entry(
@@ -157,8 +147,8 @@ class MathsQuizApp:
             font=("Arial", 13),
             justify="center",
             width=14,
-            bg=self.CARD_BG,
-            fg=self.TEXT_DARK,
+            bg="#ffffff",
+            fg="#172536",
         )
         self.answer_entry.pack(pady=8)
         self.answer_entry.focus()
@@ -168,7 +158,7 @@ class MathsQuizApp:
             self.main_frame,
             text="Submit Answer",
             font=("Arial", 11, "bold"),
-            bg=self.BTN_GREEN,
+            bg="#2e7d5b",
             fg="white",
             activebackground="#225e44",
             activeforeground="white",
@@ -181,8 +171,8 @@ class MathsQuizApp:
             self.main_frame,
             text="",
             font=("Arial", 10, "bold"),
-            bg=self.BG_COLOR,
-            fg=self.TEXT_MUTED,
+            bg="#b3c8e0",
+            fg="#52657a",
             wraplength=420,
         )
         self.feedback_label.pack(pady=(8, 0))
@@ -232,7 +222,7 @@ class MathsQuizApp:
         try:
             guess = int(typed)
         except ValueError:
-            self.feedback_label.config(text="Please enter a valid number.", fg=self.BTN_RED)
+            self.feedback_label.config(text="Please enter a valid number.", fg="#c0392b")
             return
 
         self.isCorrect(guess)
@@ -244,7 +234,7 @@ class MathsQuizApp:
             self.score_label.config(text=f"Score: {self.score}")
             self.feedback_label.config(
                 text=f"Correct! +{points} points",
-                fg=self.BTN_GREEN,
+                fg="#2e7d5b",
             )
             self.root.after(700, self.next_question)
             return True
@@ -261,7 +251,7 @@ class MathsQuizApp:
 
         self.feedback_label.config(
             text=f"Incorrect. Correct answer was {self.answer}.",
-            fg=self.BTN_RED,
+            fg="#c0392b",
         )
         self.root.after(950, self.next_question)
         return False
@@ -286,24 +276,24 @@ class MathsQuizApp:
             self.main_frame,
             text="Quiz Finished!",
             font=("Arial", 18, "bold"),
-            bg=self.BG_COLOR,
-            fg=self.BTN_BLUE,
+            bg="#a7c2e1",
+            fg="#2b5b84",
         ).pack(pady=(10, 8))
 
         tk.Label(
             self.main_frame,
             text=f"Final Score: {self.score} / 100",
             font=("Arial", 14, "bold"),
-            bg=self.BG_COLOR,
-            fg=self.TEXT_DARK,
+            bg="#c2d5ea",
+            fg="#172536",
         ).pack(pady=4)
 
         tk.Label(
             self.main_frame,
             text=f"Rank / Grade: {grade}",
             font=("Arial", 12, "bold"),
-            bg=self.BG_COLOR,
-            fg=self.BTN_GREEN,
+            bg="#eef4fb",
+            fg="#2e7d5b",
         ).pack(pady=(0, 16))
 
         again = messagebox.askyesno(
@@ -318,7 +308,7 @@ class MathsQuizApp:
                 self.main_frame,
                 text="Play Again",
                 font=("Arial", 11, "bold"),
-                bg=self.BTN_BLUE,
+                bg="#2b5b84",
                 fg="white",
                 width=16,
                 pady=6,
@@ -329,7 +319,7 @@ class MathsQuizApp:
                 self.main_frame,
                 text="Exit",
                 font=("Arial", 11, "bold"),
-                bg=self.BTN_RED,
+                bg="#c0392b",
                 fg="white",
                 width=16,
                 pady=6,
