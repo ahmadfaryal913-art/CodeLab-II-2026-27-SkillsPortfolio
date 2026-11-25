@@ -2,35 +2,145 @@ import os
 import tkinter as tk
 from tkinter import messagebox
 
+try:
+    from PIL import Image, ImageTk
+
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+
 
 class StudentManagerApp:
-    def __init__(self, root):
+    """Interactive Tkinter Student Manager with Home view, CRUD operations, and Pillow background."""
+
+    BG_IMAGE_FILENAME = "exercise 3 background.avif"
+    ICON_FILENAME = "calculator_149699.ico"
+    COURSEWORK_MAX = 60
+    EXAM_MAX = 100
+    OVERALL_MAX = 160
+
+    # Consistent portfolio theme palette
+    BG_DARK = "#162232"
+    PANEL_DARK = "#1e2e42"
+    CARD_LIGHT = "#fdfbf7"
+    ACCENT_GOLD = "#f7be44"
+    ACCENT_GOLD_HOVER = "#e5ac2e"
+    ACTION_BLUE = "#2b6cb0"
+    ACTION_BLUE_HOVER = "#22568c"
+    DANGER_BG = "#c0392b"
+    DANGER_HOVER = "#9e2d21"
+    TEXT_LIGHT = "#ffffff"
+    TEXT_MUTED = "#b8c7d9"
+    TEXT_DARK = "#162232"
+
+    FONT_FAMILY = "Tahoma"
+    MONO_FONT = "Consolas"
+
+    def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Exercise 3 - Student Manager")
-        self.root.geometry("840x610")
-        self.root.configure(bg="#162232")
+        self.root.geometry("920x650")
+        self.root.minsize(820, 560)
+        self.root.configure(bg=self.BG_DARK)
 
         self.set_icon()
 
+        # Background image state
+        self._bg_source_image = None
+        self._bg_photo_image = None
+        self._resize_after_id = None
+        self.bg_label = tk.Label(self.root, bg=self.BG_DARK)
+        self.bg_label.place(x=0, y=0, relwidth=1.0, relheight=1.0)
+        self.load_background_image()
+
+        # Student data state
         self.students = []
         self.file_path = self.find_data_file()
         self.load_students()
 
-        self.main_frame = tk.Frame(self.root, bg="#162232", padx=18, pady=14)
-        self.main_frame.pack(fill="both", expand=True)
+        self.main_frame = tk.Frame(
+            self.root,
+            bg=self.BG_DARK,
+            padx=18,
+            pady=14,
+            highlightbackground=self.ACCENT_GOLD,
+            highlightthickness=1,
+        )
+        self.main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.92, relheight=0.90)
 
-        self.build_ui()
-        self.view_all_students()
+        self.root.bind("<Configure>", self.on_window_resize)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.displayHome()
 
     def set_icon(self):
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        icon_path = os.path.join(script_dir, "calculator_149699.ico")
+        icon_path = os.path.join(script_dir, self.ICON_FILENAME)
 
         if os.path.exists(icon_path):
             try:
                 self.root.iconbitmap(icon_path)
             except tk.TclError:
                 pass
+
+    def load_background_image(self):
+        if not PIL_AVAILABLE:
+            return
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        bg_path = os.path.join(script_dir, self.BG_IMAGE_FILENAME)
+
+        if os.path.exists(bg_path):
+            try:
+                self._bg_source_image = Image.open(bg_path).convert("RGB")
+                self.render_background_image()
+            except Exception:
+                self._bg_source_image = None
+
+    def render_background_image(self):
+        self._resize_after_id = None
+        if not PIL_AVAILABLE or self._bg_source_image is None:
+            return
+
+        width = max(self.root.winfo_width(), 1)
+        height = max(self.root.winfo_height(), 1)
+
+        try:
+            resampling = Image.Resampling.LANCZOS
+        except AttributeError:
+            resampling = Image.LANCZOS
+
+        resized = self._bg_source_image.resize((width, height), resampling)
+        self._bg_photo_image = ImageTk.PhotoImage(resized)
+        self.bg_label.config(image=self._bg_photo_image)
+        self.bg_label.lower()
+
+    def on_window_resize(self, event):
+        if event.widget is not self.root or self._bg_source_image is None:
+            return
+
+        if self._resize_after_id is not None:
+            try:
+                self.root.after_cancel(self._resize_after_id)
+            except ValueError:
+                pass
+
+        self._resize_after_id = self.root.after(80, self.render_background_image)
+
+    def clear_frame(self):
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+
+    def on_close(self):
+        if self._resize_after_id is not None:
+            try:
+                self.root.after_cancel(self._resize_after_id)
+            except ValueError:
+                pass
+        self.root.destroy()
+
+    # ------------------------------------------------------------------
+    # Data Loading, Calculation & Persistence
+    # ------------------------------------------------------------------
 
     def find_data_file(self):
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -49,20 +159,18 @@ class StudentManagerApp:
     def calculate_grade(self, percentage):
         if percentage >= 70:
             return "A"
-        elif percentage >= 60:
+        if percentage >= 60:
             return "B"
-        elif percentage >= 50:
+        if percentage >= 50:
             return "C"
-        elif percentage >= 40:
+        if percentage >= 40:
             return "D"
-        else:
-            return "F"
+        return "F"
 
     def build_student_record(self, student_id, name, cw1, cw2, cw3, exam):
         coursework_total = cw1 + cw2 + cw3
         overall_total = coursework_total + exam
-        max_marks = 160
-        percentage = round((overall_total / max_marks) * 100, 2)
+        percentage = round((overall_total / self.OVERALL_MAX) * 100, 2)
         grade = self.calculate_grade(percentage)
 
         return {
@@ -129,26 +237,138 @@ class StudentManagerApp:
                     f"{s['id']},{s['name']},{s['cw1']},{s['cw2']},{s['cw3']},{s['exam']}\n"
                 )
 
-    def build_ui(self):
+    def _class_average_percentage(self):
+        if not self.students:
+            return 0.0
+        return round(sum(s["percentage"] for s in self.students) / len(self.students), 2)
+
+    # ------------------------------------------------------------------
+    # Navigation & UI Builders
+    # ------------------------------------------------------------------
+
+    def displayHome(self):
+        """Render the Home overview screen for Student Manager."""
+        self.clear_frame()
+
         tk.Label(
             self.main_frame,
-            text="Student Manager",
-            font=("Tahoma", 18, "bold"),
-            bg="#162232",
-            fg="#f7be44",
-        ).pack(pady=(0, 8))
+            text="STUDENT MANAGER STUDIO",
+            font=(self.FONT_FAMILY, 22, "bold"),
+            bg=self.BG_DARK,
+            fg=self.ACCENT_GOLD,
+        ).pack(pady=(12, 4))
 
-        menu_row = tk.Frame(self.main_frame, bg="#162232")
+        tk.Label(
+            self.main_frame,
+            text="Code Lab 2 • Coursework, Exam & Grade Record System",
+            font=(self.FONT_FAMILY, 10),
+            bg=self.BG_DARK,
+            fg=self.TEXT_MUTED,
+        ).pack(pady=(0, 16))
+
+        overview_card = tk.Frame(
+            self.main_frame,
+            bg=self.PANEL_DARK,
+            padx=22,
+            pady=16,
+            highlightbackground="#2b405c",
+            highlightthickness=1,
+        )
+        overview_card.pack(fill="x", pady=8)
+
+        features = [
+            f"• Loaded {len(self.students)} student records  |  Class Average: {self._class_average_percentage()}%",
+            f"• Grading out of {self.OVERALL_MAX} (CW1–CW3 out of {self.COURSEWORK_MAX} + Exam out of {self.EXAM_MAX})",
+            "• View all records, inspect top/lowest scorers, sort marks, and add/update/delete entries",
+        ]
+        for line in features:
+            tk.Label(
+                overview_card,
+                text=line,
+                font=(self.FONT_FAMILY, 10),
+                bg=self.PANEL_DARK,
+                fg=self.TEXT_LIGHT,
+                anchor="w",
+            ).pack(fill="x", pady=3)
+
+        tk.Button(
+            self.main_frame,
+            text="Open Student Manager →",
+            font=(self.FONT_FAMILY, 12, "bold"),
+            bg=self.ACCENT_GOLD,
+            fg=self.TEXT_DARK,
+            activebackground=self.ACCENT_GOLD_HOVER,
+            activeforeground=self.TEXT_DARK,
+            relief="flat",
+            cursor="hand2",
+            width=24,
+            pady=9,
+            command=self.open_manager,
+        ).pack(pady=(16, 10))
+
+        tk.Button(
+            self.main_frame,
+            text="Exit Application",
+            font=(self.FONT_FAMILY, 10),
+            bg=self.PANEL_DARK,
+            fg=self.TEXT_MUTED,
+            activebackground="#273b54",
+            activeforeground=self.TEXT_LIGHT,
+            relief="flat",
+            cursor="hand2",
+            width=18,
+            pady=5,
+            command=self.on_close,
+        ).pack()
+
+    def open_manager(self):
+        """Switch to the main Student Manager workspace and load all records."""
+        self.build_ui()
+        self.view_all_students()
+
+    def build_ui(self):
+        """Build the Student Manager workspace with a top Home navigation button."""
+        self.clear_frame()
+
+        top_bar = tk.Frame(self.main_frame, bg=self.BG_DARK)
+        top_bar.pack(fill="x", pady=(0, 8))
+
+        tk.Button(
+            top_bar,
+            text="← Home",
+            font=(self.FONT_FAMILY, 9, "bold"),
+            bg=self.PANEL_DARK,
+            fg=self.ACCENT_GOLD,
+            activebackground="#273b54",
+            activeforeground=self.ACCENT_GOLD,
+            relief="flat",
+            cursor="hand2",
+            padx=10,
+            pady=3,
+            command=self.displayHome,
+        ).pack(side="left")
+
+        tk.Label(
+            top_bar,
+            text="Student Manager",
+            font=(self.FONT_FAMILY, 18, "bold"),
+            bg=self.BG_DARK,
+            fg=self.ACCENT_GOLD,
+        ).pack(side="left", padx=(14, 0))
+
+        menu_row = tk.Frame(self.main_frame, bg=self.BG_DARK)
         menu_row.pack(pady=(0, 8))
 
         tk.Button(
             menu_row,
             text="View All Students",
-            font=("Tahoma", 10, "bold"),
-            bg="#2b6cb0",
-            fg="#ffffff",
-            activebackground="#22568c",
-            activeforeground="#ffffff",
+            font=(self.FONT_FAMILY, 10, "bold"),
+            bg=self.ACTION_BLUE,
+            fg=self.TEXT_LIGHT,
+            activebackground=self.ACTION_BLUE_HOVER,
+            activeforeground=self.TEXT_LIGHT,
+            relief="flat",
+            cursor="hand2",
             width=17,
             pady=4,
             command=self.view_all_students,
@@ -157,11 +377,13 @@ class StudentManagerApp:
         tk.Button(
             menu_row,
             text="Highest Mark",
-            font=("Tahoma", 10, "bold"),
-            bg="#2b6cb0",
-            fg="#ffffff",
-            activebackground="#22568c",
-            activeforeground="#ffffff",
+            font=(self.FONT_FAMILY, 10, "bold"),
+            bg=self.ACTION_BLUE,
+            fg=self.TEXT_LIGHT,
+            activebackground=self.ACTION_BLUE_HOVER,
+            activeforeground=self.TEXT_LIGHT,
+            relief="flat",
+            cursor="hand2",
             width=14,
             pady=4,
             command=self.show_highest_student,
@@ -170,11 +392,13 @@ class StudentManagerApp:
         tk.Button(
             menu_row,
             text="Lowest Mark",
-            font=("Tahoma", 10, "bold"),
-            bg="#2b6cb0",
-            fg="#ffffff",
-            activebackground="#22568c",
-            activeforeground="#ffffff",
+            font=(self.FONT_FAMILY, 10, "bold"),
+            bg=self.ACTION_BLUE,
+            fg=self.TEXT_LIGHT,
+            activebackground=self.ACTION_BLUE_HOVER,
+            activeforeground=self.TEXT_LIGHT,
+            relief="flat",
+            cursor="hand2",
             width=14,
             pady=4,
             command=self.show_lowest_student,
@@ -183,11 +407,13 @@ class StudentManagerApp:
         tk.Button(
             menu_row,
             text="Sort High -> Low",
-            font=("Tahoma", 10, "bold"),
-            bg="#2b6cb0",
-            fg="#ffffff",
-            activebackground="#22568c",
-            activeforeground="#ffffff",
+            font=(self.FONT_FAMILY, 10, "bold"),
+            bg=self.ACTION_BLUE,
+            fg=self.TEXT_LIGHT,
+            activebackground=self.ACTION_BLUE_HOVER,
+            activeforeground=self.TEXT_LIGHT,
+            relief="flat",
+            cursor="hand2",
             width=16,
             pady=4,
             command=lambda: self.sort_students(descending=True),
@@ -196,45 +422,49 @@ class StudentManagerApp:
         tk.Button(
             menu_row,
             text="Sort Low -> High",
-            font=("Tahoma", 10, "bold"),
-            bg="#2b6cb0",
-            fg="#ffffff",
-            activebackground="#22568c",
-            activeforeground="#ffffff",
+            font=(self.FONT_FAMILY, 10, "bold"),
+            bg=self.ACTION_BLUE,
+            fg=self.TEXT_LIGHT,
+            activebackground=self.ACTION_BLUE_HOVER,
+            activeforeground=self.TEXT_LIGHT,
+            relief="flat",
+            cursor="hand2",
             width=16,
             pady=4,
             command=lambda: self.sort_students(descending=False),
         ).grid(row=0, column=4, padx=3)
 
-        search_row = tk.Frame(self.main_frame, bg="#162232")
+        search_row = tk.Frame(self.main_frame, bg=self.BG_DARK)
         search_row.pack(pady=(0, 8))
 
         tk.Label(
             search_row,
             text="Student ID or Name:",
-            font=("Tahoma", 10, "bold"),
-            bg="#162232",
-            fg="#ffffff",
+            font=(self.FONT_FAMILY, 10, "bold"),
+            bg=self.BG_DARK,
+            fg=self.TEXT_LIGHT,
         ).pack(side="left", padx=(0, 6))
 
         self.search_entry = tk.Entry(
             search_row,
-            font=("Tahoma", 10),
+            font=(self.FONT_FAMILY, 10),
             width=22,
-            bg="#fdfbf7",
-            fg="#162232",
+            bg=self.CARD_LIGHT,
+            fg=self.TEXT_DARK,
         )
         self.search_entry.pack(side="left", padx=(0, 6))
-        self.search_entry.bind("<Return>", lambda event: self.view_individual_student())
+        self.search_entry.bind("<Return>", lambda _event: self.view_individual_student())
 
         tk.Button(
             search_row,
             text="View Student",
-            font=("Tahoma", 10, "bold"),
-            bg="#f7be44",
-            fg="#000000",
-            activebackground="#dea62b",
-            activeforeground="#000000",
+            font=(self.FONT_FAMILY, 10, "bold"),
+            bg=self.ACCENT_GOLD,
+            fg=self.TEXT_DARK,
+            activebackground=self.ACCENT_GOLD_HOVER,
+            activeforeground=self.TEXT_DARK,
+            relief="flat",
+            cursor="hand2",
             width=13,
             pady=3,
             command=self.view_individual_student,
@@ -243,11 +473,13 @@ class StudentManagerApp:
         tk.Button(
             search_row,
             text="Delete Student",
-            font=("Tahoma", 10, "bold"),
-            bg="#d94e3f",
-            fg="#ffffff",
-            activebackground="#b83d30",
-            activeforeground="#ffffff",
+            font=(self.FONT_FAMILY, 10, "bold"),
+            bg=self.DANGER_BG,
+            fg=self.TEXT_LIGHT,
+            activebackground=self.DANGER_HOVER,
+            activeforeground=self.TEXT_LIGHT,
+            relief="flat",
+            cursor="hand2",
             width=14,
             pady=3,
             command=self.delete_student,
@@ -255,7 +487,7 @@ class StudentManagerApp:
 
         manage_box = tk.Frame(
             self.main_frame,
-            bg="#1f2f44",
+            bg=self.PANEL_DARK,
             bd=1,
             relief="solid",
             padx=10,
@@ -266,71 +498,73 @@ class StudentManagerApp:
         tk.Label(
             manage_box,
             text="ID:",
-            font=("Tahoma", 9, "bold"),
-            bg="#1f2f44",
-            fg="#ffffff",
+            font=(self.FONT_FAMILY, 9, "bold"),
+            bg=self.PANEL_DARK,
+            fg=self.TEXT_LIGHT,
         ).grid(row=0, column=0, padx=(0, 3))
-        self.id_entry = tk.Entry(manage_box, font=("Tahoma", 9), width=8, bg="#fdfbf7", fg="#162232")
+        self.id_entry = tk.Entry(manage_box, font=(self.FONT_FAMILY, 9), width=8, bg=self.CARD_LIGHT, fg=self.TEXT_DARK)
         self.id_entry.grid(row=0, column=1, padx=(0, 8))
 
         tk.Label(
             manage_box,
             text="Name:",
-            font=("Tahoma", 9, "bold"),
-            bg="#1f2f44",
-            fg="#ffffff",
+            font=(self.FONT_FAMILY, 9, "bold"),
+            bg=self.PANEL_DARK,
+            fg=self.TEXT_LIGHT,
         ).grid(row=0, column=2, padx=(0, 3))
-        self.name_entry = tk.Entry(manage_box, font=("Tahoma", 9), width=15, bg="#fdfbf7", fg="#162232")
+        self.name_entry = tk.Entry(manage_box, font=(self.FONT_FAMILY, 9), width=15, bg=self.CARD_LIGHT, fg=self.TEXT_DARK)
         self.name_entry.grid(row=0, column=3, padx=(0, 8))
 
         tk.Label(
             manage_box,
             text="CW1:",
-            font=("Tahoma", 9, "bold"),
-            bg="#1f2f44",
-            fg="#ffffff",
+            font=(self.FONT_FAMILY, 9, "bold"),
+            bg=self.PANEL_DARK,
+            fg=self.TEXT_LIGHT,
         ).grid(row=0, column=4, padx=(0, 2))
-        self.cw1_entry = tk.Entry(manage_box, font=("Tahoma", 9), width=5, bg="#fdfbf7", fg="#162232")
+        self.cw1_entry = tk.Entry(manage_box, font=(self.FONT_FAMILY, 9), width=5, bg=self.CARD_LIGHT, fg=self.TEXT_DARK)
         self.cw1_entry.grid(row=0, column=5, padx=(0, 6))
 
         tk.Label(
             manage_box,
             text="CW2:",
-            font=("Tahoma", 9, "bold"),
-            bg="#1f2f44",
-            fg="#ffffff",
+            font=(self.FONT_FAMILY, 9, "bold"),
+            bg=self.PANEL_DARK,
+            fg=self.TEXT_LIGHT,
         ).grid(row=0, column=6, padx=(0, 2))
-        self.cw2_entry = tk.Entry(manage_box, font=("Tahoma", 9), width=5, bg="#fdfbf7", fg="#162232")
+        self.cw2_entry = tk.Entry(manage_box, font=(self.FONT_FAMILY, 9), width=5, bg=self.CARD_LIGHT, fg=self.TEXT_DARK)
         self.cw2_entry.grid(row=0, column=7, padx=(0, 6))
 
         tk.Label(
             manage_box,
             text="CW3:",
-            font=("Tahoma", 9, "bold"),
-            bg="#1f2f44",
-            fg="#ffffff",
+            font=(self.FONT_FAMILY, 9, "bold"),
+            bg=self.PANEL_DARK,
+            fg=self.TEXT_LIGHT,
         ).grid(row=0, column=8, padx=(0, 2))
-        self.cw3_entry = tk.Entry(manage_box, font=("Tahoma", 9), width=5, bg="#fdfbf7", fg="#162232")
+        self.cw3_entry = tk.Entry(manage_box, font=(self.FONT_FAMILY, 9), width=5, bg=self.CARD_LIGHT, fg=self.TEXT_DARK)
         self.cw3_entry.grid(row=0, column=9, padx=(0, 6))
 
         tk.Label(
             manage_box,
             text="Exam:",
-            font=("Tahoma", 9, "bold"),
-            bg="#1f2f44",
-            fg="#ffffff",
+            font=(self.FONT_FAMILY, 9, "bold"),
+            bg=self.PANEL_DARK,
+            fg=self.TEXT_LIGHT,
         ).grid(row=0, column=10, padx=(0, 2))
-        self.exam_entry = tk.Entry(manage_box, font=("Tahoma", 9), width=6, bg="#fdfbf7", fg="#162232")
+        self.exam_entry = tk.Entry(manage_box, font=(self.FONT_FAMILY, 9), width=6, bg=self.CARD_LIGHT, fg=self.TEXT_DARK)
         self.exam_entry.grid(row=0, column=11, padx=(0, 8))
 
         tk.Button(
             manage_box,
             text="Add Student",
-            font=("Tahoma", 9, "bold"),
-            bg="#f7be44",
-            fg="#000000",
-            activebackground="#dea62b",
-            activeforeground="#000000",
+            font=(self.FONT_FAMILY, 9, "bold"),
+            bg=self.ACCENT_GOLD,
+            fg=self.TEXT_DARK,
+            activebackground=self.ACCENT_GOLD_HOVER,
+            activeforeground=self.TEXT_DARK,
+            relief="flat",
+            cursor="hand2",
             width=11,
             command=self.add_student,
         ).grid(row=0, column=12, padx=3)
@@ -338,11 +572,13 @@ class StudentManagerApp:
         tk.Button(
             manage_box,
             text="Update Student",
-            font=("Tahoma", 9, "bold"),
-            bg="#2b6cb0",
-            fg="#ffffff",
-            activebackground="#22568c",
-            activeforeground="#ffffff",
+            font=(self.FONT_FAMILY, 9, "bold"),
+            bg=self.ACTION_BLUE,
+            fg=self.TEXT_LIGHT,
+            activebackground=self.ACTION_BLUE_HOVER,
+            activeforeground=self.TEXT_LIGHT,
+            relief="flat",
+            cursor="hand2",
             width=13,
             command=self.update_student,
         ).grid(row=0, column=13, padx=3)
@@ -351,13 +587,17 @@ class StudentManagerApp:
             self.main_frame,
             height=16,
             width=92,
-            font=("Consolas", 10),
-            bg="#fdfbf7",
-            fg="#162232",
+            font=(self.MONO_FONT, 10),
+            bg=self.CARD_LIGHT,
+            fg=self.TEXT_DARK,
             padx=12,
             pady=10,
         )
         self.output_box.pack(fill="both", expand=True)
+
+    # ------------------------------------------------------------------
+    # Reporting, Search, Sorting & CRUD Operations
+    # ------------------------------------------------------------------
 
     def write_output(self, text):
         self.output_box.config(state="normal")
@@ -372,9 +612,9 @@ class StudentManagerApp:
             f"Coursework 1  : {s['cw1']}\n"
             f"Coursework 2  : {s['cw2']}\n"
             f"Coursework 3  : {s['cw3']}\n"
-            f"CW Total      : {s['cw_total']} / 60\n"
-            f"Exam Mark     : {s['exam']} / 100\n"
-            f"Overall Total : {s['total']} / 160\n"
+            f"CW Total      : {s['cw_total']} / {self.COURSEWORK_MAX}\n"
+            f"Exam Mark     : {s['exam']} / {self.EXAM_MAX}\n"
+            f"Overall Total : {s['total']} / {self.OVERALL_MAX}\n"
             f"Percentage    : {s['percentage']}%\n"
             f"Grade         : {s['grade']}\n"
         )
@@ -469,7 +709,11 @@ class StudentManagerApp:
             key=lambda item: item["total"],
             reverse=descending,
         )
-        order_label = "Sorted by Overall Marks (High to Low)" if descending else "Sorted by Overall Marks (Low to High)"
+        order_label = (
+            "Sorted by Overall Marks (High to Low)"
+            if descending
+            else "Sorted by Overall Marks (Low to High)"
+        )
         self.display_student_table(sorted_list, title_note=order_label)
 
     def read_form_inputs(self):
