@@ -334,9 +334,9 @@ class JokeAssistantApp:
             command=self.displayHome,
         ).pack(pady=(10, 2))
 
-    # Render the main joke viewer screen with Home navigation and larger buttons
+    # Render the main joke viewer screen with Home navigation and a compact joke box
     def build_ui(self):
-        self.main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.60, relheight=0.54)
+        self.main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.52, relheight=0.50)
         self.clear_frame()
 
         top_bar = tk.Frame(self.main_frame, bg=self.BG_DARK)
@@ -387,18 +387,17 @@ class JokeAssistantApp:
             width=26,
             pady=9,
             command=self.tell_joke,
-        )
-        self.alexa_btn.pack(pady=4)
+        ).pack(pady=4)
 
         joke_box = tk.Frame(
             self.main_frame,
             bg=self.CARD_LIGHT,
             bd=1,
             relief="solid",
-            padx=14,
-            pady=10,
+            padx=10,
+            pady=8,
         )
-        joke_box.pack(fill="x", pady=8)
+        joke_box.pack(pady=6)
 
         initial_setup = (
             self.current_joke[0]
@@ -412,10 +411,10 @@ class JokeAssistantApp:
             font=(self.FONT_FAMILY, 10, "bold"),
             bg=self.CARD_LIGHT,
             fg=self.TEXT_DARK,
-            wraplength=380,
+            wraplength=290,
             justify="center",
         )
-        self.setup_label.pack(pady=(0, 6))
+        self.setup_label.pack(pady=(0, 4))
 
         self.punchline_label = tk.Label(
             joke_box,
@@ -423,7 +422,7 @@ class JokeAssistantApp:
             font=(self.FONT_FAMILY, 10, "bold"),
             bg=self.CARD_LIGHT,
             fg=self.PUNCHLINE_COLOR,
-            wraplength=380,
+            wraplength=290,
             justify="center",
         )
         self.punchline_label.pack()
