@@ -36,6 +36,7 @@ class StudentManagerApp:
     FONT_FAMILY = "Tahoma"
     MONO_FONT = "Consolas"
 
+    # Initialize the main window, icon, background image, student records, and Home screen
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Exercise 3 - Student Manager")
@@ -55,6 +56,7 @@ class StudentManagerApp:
 
         # Student data state
         self.students = []
+        self.info_visible = False
         self.file_path = self.find_data_file()
         self.load_students()
 
@@ -64,14 +66,22 @@ class StudentManagerApp:
             padx=18,
             pady=14,
             highlightbackground=self.ACCENT_GOLD,
-            highlightthickness=1,
+            highlightthickness=2,
         )
-        self.main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.92, relheight=0.90)
+        self._sync_home_card_size()
 
         self.root.bind("<Configure>", self.on_window_resize)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.displayHome()
 
+    # Adjust the Home card size depending on whether the info box is expanded
+    def _sync_home_card_size(self):
+        if self.info_visible:
+            self.main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.62, relheight=0.58)
+        else:
+            self.main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.48, relheight=0.42)
+
+    # Set the custom calculator window icon if available
     def set_icon(self):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         icon_path = os.path.join(script_dir, self.ICON_FILENAME)
@@ -82,6 +92,7 @@ class StudentManagerApp:
             except tk.TclError:
                 pass
 
+    # Load the background image using Pillow so it can be dynamically resized
     def load_background_image(self):
         if not PIL_AVAILABLE:
             return
@@ -96,6 +107,7 @@ class StudentManagerApp:
             except Exception:
                 self._bg_source_image = None
 
+    # Resize and display the background image to fit the current window size
     def render_background_image(self):
         self._resize_after_id = None
         if not PIL_AVAILABLE or self._bg_source_image is None:
@@ -114,6 +126,7 @@ class StudentManagerApp:
         self.bg_label.config(image=self._bg_photo_image)
         self.bg_label.lower()
 
+    # Debounce window resize events before redrawing the background image
     def on_window_resize(self, event):
         if event.widget is not self.root or self._bg_source_image is None:
             return
@@ -126,10 +139,12 @@ class StudentManagerApp:
 
         self._resize_after_id = self.root.after(80, self.render_background_image)
 
+    # Remove all child widgets inside main_frame before rendering a new view
     def clear_frame(self):
         for widget in self.main_frame.winfo_children():
             widget.destroy()
 
+    # Cancel any pending resize timer and close the application window
     def on_close(self):
         if self._resize_after_id is not None:
             try:
@@ -138,10 +153,7 @@ class StudentManagerApp:
                 pass
         self.root.destroy()
 
-    # ------------------------------------------------------------------
-    # Data Loading, Calculation & Persistence
-    # ------------------------------------------------------------------
-
+    # Locate studentMarks.txt across standard project paths or default to the script directory
     def find_data_file(self):
         base_dir = os.path.dirname(os.path.abspath(__file__))
         possible_paths = [
@@ -156,6 +168,7 @@ class StudentManagerApp:
 
         return os.path.join(base_dir, "studentMarks.txt")
 
+    # Convert percentage score into a letter grade
     def calculate_grade(self, percentage):
         if percentage >= 70:
             return "A"
@@ -167,6 +180,7 @@ class StudentManagerApp:
             return "D"
         return "F"
 
+    # Build a structured student dictionary with coursework total, overall total, percentage, and grade
     def build_student_record(self, student_id, name, cw1, cw2, cw3, exam):
         coursework_total = cw1 + cw2 + cw3
         overall_total = coursework_total + exam
@@ -186,6 +200,7 @@ class StudentManagerApp:
             "grade": grade,
         }
 
+    # Parse a single line from studentMarks.txt into a student record dictionary
     def parse_student_line(self, line):
         if "|" in line:
             parts = [item.strip() for item in line.split("|")]
@@ -208,6 +223,7 @@ class StudentManagerApp:
 
         return self.build_student_record(student_id, name, cw1, cw2, cw3, exam)
 
+    # Load all valid student records from studentMarks.txt
     def load_students(self):
         self.students = []
         if not os.path.exists(self.file_path):
@@ -229,6 +245,7 @@ class StudentManagerApp:
                 if student:
                     self.students.append(student)
 
+    # Write the current student list back to studentMarks.txt
     def save_students_to_file(self):
         with open(self.file_path, "w", encoding="utf-8") as file:
             file.write(f"{len(self.students)}\n")
@@ -237,59 +254,29 @@ class StudentManagerApp:
                     f"{s['id']},{s['name']},{s['cw1']},{s['cw2']},{s['cw3']},{s['exam']}\n"
                 )
 
+    # Compute the average percentage across all loaded students
     def _class_average_percentage(self):
         if not self.students:
             return 0.0
         return round(sum(s["percentage"] for s in self.students) / len(self.students), 2)
 
-    # ------------------------------------------------------------------
-    # Navigation & UI Builders
-    # ------------------------------------------------------------------
+    # Toggle visibility of the grading and summary info box on the Home screen
+    def toggle_info(self):
+        self.info_visible = not self.info_visible
+        self.displayHome()
 
+    # Render the compact Home screen with main button, toggleable info button, and Exit button
     def displayHome(self):
-        """Render the Home overview screen for Student Manager."""
+        self._sync_home_card_size()
         self.clear_frame()
 
         tk.Label(
             self.main_frame,
             text="STUDENT MANAGER STUDIO",
-            font=(self.FONT_FAMILY, 22, "bold"),
+            font=(self.FONT_FAMILY, 21, "bold"),
             bg=self.BG_DARK,
             fg=self.ACCENT_GOLD,
-        ).pack(pady=(12, 4))
-
-        tk.Label(
-            self.main_frame,
-            text="Code Lab 2 • Coursework, Exam & Grade Record System",
-            font=(self.FONT_FAMILY, 10),
-            bg=self.BG_DARK,
-            fg=self.TEXT_MUTED,
-        ).pack(pady=(0, 16))
-
-        overview_card = tk.Frame(
-            self.main_frame,
-            bg=self.PANEL_DARK,
-            padx=22,
-            pady=16,
-            highlightbackground="#2b405c",
-            highlightthickness=1,
-        )
-        overview_card.pack(fill="x", pady=8)
-
-        features = [
-            f"• Loaded {len(self.students)} student records  |  Class Average: {self._class_average_percentage()}%",
-            f"• Grading out of {self.OVERALL_MAX} (CW1–CW3 out of {self.COURSEWORK_MAX} + Exam out of {self.EXAM_MAX})",
-            "• View all records, inspect top/lowest scorers, sort marks, and add/update/delete entries",
-        ]
-        for line in features:
-            tk.Label(
-                overview_card,
-                text=line,
-                font=(self.FONT_FAMILY, 10),
-                bg=self.PANEL_DARK,
-                fg=self.TEXT_LIGHT,
-                anchor="w",
-            ).pack(fill="x", pady=3)
+        ).pack(pady=(6, 12))
 
         tk.Button(
             self.main_frame,
@@ -301,33 +288,75 @@ class StudentManagerApp:
             activeforeground=self.TEXT_DARK,
             relief="flat",
             cursor="hand2",
-            width=24,
-            pady=9,
+            width=26,
+            pady=10,
             command=self.open_manager,
-        ).pack(pady=(16, 10))
+        ).pack(pady=6)
+
+        tk.Button(
+            self.main_frame,
+            text="Grading & System Info",
+            font=(self.FONT_FAMILY, 11, "bold"),
+            bg=self.PANEL_DARK,
+            fg=self.TEXT_LIGHT,
+            activebackground="#273b54",
+            activeforeground=self.ACCENT_GOLD,
+            relief="flat",
+            cursor="hand2",
+            width=26,
+            pady=9,
+            command=self.toggle_info,
+        ).pack(pady=6)
+
+        if self.info_visible:
+            overview_card = tk.Frame(
+                self.main_frame,
+                bg=self.PANEL_DARK,
+                padx=16,
+                pady=10,
+                highlightbackground=self.ACCENT_GOLD,
+                highlightthickness=1,
+            )
+            overview_card.pack(fill="x", pady=6)
+
+            features = [
+                f"• Students Loaded: {len(self.students)}  |  Class Average: {self._class_average_percentage()}%",
+                f"• Total Marks: {self.OVERALL_MAX} (CW1–CW3 out of {self.COURSEWORK_MAX} + Exam out of {self.EXAM_MAX})",
+                "• Search, sort, view highest/lowest, and add/update/delete records",
+            ]
+            for line in features:
+                tk.Label(
+                    overview_card,
+                    text=line,
+                    font=(self.FONT_FAMILY, 9, "bold"),
+                    bg=self.PANEL_DARK,
+                    fg=self.TEXT_LIGHT,
+                    anchor="w",
+                ).pack(fill="x", pady=2)
 
         tk.Button(
             self.main_frame,
             text="Exit Application",
-            font=(self.FONT_FAMILY, 10),
+            font=(self.FONT_FAMILY, 11, "bold"),
             bg=self.PANEL_DARK,
             fg=self.TEXT_MUTED,
             activebackground="#273b54",
             activeforeground=self.TEXT_LIGHT,
             relief="flat",
             cursor="hand2",
-            width=18,
-            pady=5,
+            width=24,
+            pady=9,
             command=self.on_close,
-        ).pack()
+        ).pack(pady=(6, 4))
 
+    # Open the main Student Manager screen and display all student records
     def open_manager(self):
-        """Switch to the main Student Manager workspace and load all records."""
+        self.main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.92, relheight=0.90)
         self.build_ui()
         self.view_all_students()
 
+    # Build the main Student Manager workspace with navigation, search, CRUD form, and output table
     def build_ui(self):
-        """Build the Student Manager workspace with a top Home navigation button."""
         self.clear_frame()
 
         top_bar = tk.Frame(self.main_frame, bg=self.BG_DARK)
@@ -336,15 +365,15 @@ class StudentManagerApp:
         tk.Button(
             top_bar,
             text="← Home",
-            font=(self.FONT_FAMILY, 9, "bold"),
+            font=(self.FONT_FAMILY, 10, "bold"),
             bg=self.PANEL_DARK,
             fg=self.ACCENT_GOLD,
             activebackground="#273b54",
             activeforeground=self.ACCENT_GOLD,
             relief="flat",
             cursor="hand2",
-            padx=10,
-            pady=3,
+            padx=12,
+            pady=4,
             command=self.displayHome,
         ).pack(side="left")
 
@@ -370,7 +399,7 @@ class StudentManagerApp:
             relief="flat",
             cursor="hand2",
             width=17,
-            pady=4,
+            pady=5,
             command=self.view_all_students,
         ).grid(row=0, column=0, padx=3)
 
@@ -385,7 +414,7 @@ class StudentManagerApp:
             relief="flat",
             cursor="hand2",
             width=14,
-            pady=4,
+            pady=5,
             command=self.show_highest_student,
         ).grid(row=0, column=1, padx=3)
 
@@ -400,7 +429,7 @@ class StudentManagerApp:
             relief="flat",
             cursor="hand2",
             width=14,
-            pady=4,
+            pady=5,
             command=self.show_lowest_student,
         ).grid(row=0, column=2, padx=3)
 
@@ -415,7 +444,7 @@ class StudentManagerApp:
             relief="flat",
             cursor="hand2",
             width=16,
-            pady=4,
+            pady=5,
             command=lambda: self.sort_students(descending=True),
         ).grid(row=0, column=3, padx=3)
 
@@ -430,7 +459,7 @@ class StudentManagerApp:
             relief="flat",
             cursor="hand2",
             width=16,
-            pady=4,
+            pady=5,
             command=lambda: self.sort_students(descending=False),
         ).grid(row=0, column=4, padx=3)
 
@@ -465,8 +494,8 @@ class StudentManagerApp:
             activeforeground=self.TEXT_DARK,
             relief="flat",
             cursor="hand2",
-            width=13,
-            pady=3,
+            width=14,
+            pady=4,
             command=self.view_individual_student,
         ).pack(side="left", padx=(0, 5))
 
@@ -480,8 +509,8 @@ class StudentManagerApp:
             activeforeground=self.TEXT_LIGHT,
             relief="flat",
             cursor="hand2",
-            width=14,
-            pady=3,
+            width=15,
+            pady=4,
             command=self.delete_student,
         ).pack(side="left")
 
@@ -565,7 +594,8 @@ class StudentManagerApp:
             activeforeground=self.TEXT_DARK,
             relief="flat",
             cursor="hand2",
-            width=11,
+            width=12,
+            pady=4,
             command=self.add_student,
         ).grid(row=0, column=12, padx=3)
 
@@ -579,7 +609,8 @@ class StudentManagerApp:
             activeforeground=self.TEXT_LIGHT,
             relief="flat",
             cursor="hand2",
-            width=13,
+            width=14,
+            pady=4,
             command=self.update_student,
         ).grid(row=0, column=13, padx=3)
 
@@ -595,16 +626,14 @@ class StudentManagerApp:
         )
         self.output_box.pack(fill="both", expand=True)
 
-    # ------------------------------------------------------------------
-    # Reporting, Search, Sorting & CRUD Operations
-    # ------------------------------------------------------------------
-
+    # Replace text inside the read-only output box with formatted report text
     def write_output(self, text):
         self.output_box.config(state="normal")
         self.output_box.delete("1.0", tk.END)
         self.output_box.insert(tk.END, text)
         self.output_box.config(state="disabled")
 
+    # Format detailed coursework, exam, total, percentage, and grade lines for one student
     def format_student_detail(self, s):
         return (
             f"Name          : {s['name']}\n"
@@ -619,6 +648,7 @@ class StudentManagerApp:
             f"Grade         : {s['grade']}\n"
         )
 
+    # Render a formatted table of student records along with count and class average
     def display_student_table(self, records, title_note=""):
         if not records:
             self.write_output("No student records found.")
@@ -644,9 +674,11 @@ class StudentManagerApp:
         lines.append(f"Total Students: {len(records)}   |   Average Percentage: {avg_pct}%")
         self.write_output("\n".join(lines))
 
+    # Display all student records in the output box
     def view_all_students(self):
         self.display_student_table(self.students)
 
+    # Search for a student by ID or name and display matching details
     def view_individual_student(self):
         query = self.search_entry.get().strip().lower()
         if not query:
@@ -673,6 +705,7 @@ class StudentManagerApp:
                 blocks.append(self.format_student_detail(s) + "-" * 35)
             self.write_output("\n".join(blocks))
 
+    # Find and display the student with the highest overall mark
     def show_highest_student(self):
         if not self.students:
             self.write_output("No student records available.")
@@ -686,6 +719,7 @@ class StudentManagerApp:
             + self.format_student_detail(top_student)
         )
 
+    # Find and display the student with the lowest overall mark
     def show_lowest_student(self):
         if not self.students:
             self.write_output("No student records available.")
@@ -699,6 +733,7 @@ class StudentManagerApp:
             + self.format_student_detail(low_student)
         )
 
+    # Sort student records by overall total in ascending or descending order
     def sort_students(self, descending=True):
         if not self.students:
             self.write_output("No student records to sort.")
@@ -716,6 +751,7 @@ class StudentManagerApp:
         )
         self.display_student_table(sorted_list, title_note=order_label)
 
+    # Validate form entry fields and return a new student record dictionary
     def read_form_inputs(self):
         student_id = self.id_entry.get().strip()
         name = self.name_entry.get().strip()
@@ -739,6 +775,7 @@ class StudentManagerApp:
 
         return self.build_student_record(student_id, name, cw1, cw2, cw3, exam)
 
+    # Clear all inputs in the add/update student form
     def clear_form_inputs(self):
         self.id_entry.delete(0, tk.END)
         self.name_entry.delete(0, tk.END)
@@ -747,6 +784,7 @@ class StudentManagerApp:
         self.cw3_entry.delete(0, tk.END)
         self.exam_entry.delete(0, tk.END)
 
+    # Add a new student record, save to file, and refresh the table
     def add_student(self):
         new_student = self.read_form_inputs()
         if not new_student:
@@ -763,6 +801,7 @@ class StudentManagerApp:
         self.view_all_students()
         messagebox.showinfo("Added", f"Added {new_student['name']} and saved to studentMarks.txt.")
 
+    # Update an existing student record by ID, save to file, and refresh the table
     def update_student(self):
         updated_student = self.read_form_inputs()
         if not updated_student:
@@ -779,6 +818,7 @@ class StudentManagerApp:
 
         messagebox.showwarning("Not Found", f"No student found with ID '{updated_student['id']}'.")
 
+    # Delete a matching student record by ID or name and save changes to file
     def delete_student(self):
         query = self.search_entry.get().strip().lower()
         if not query:
