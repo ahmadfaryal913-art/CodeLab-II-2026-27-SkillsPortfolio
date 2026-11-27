@@ -34,7 +34,7 @@ class MathsQuizApp:
 
     FONT_FAMILY = "Tahoma"
 
-    # Initialize the window, background image, quiz state, and Home screen
+    # Initialize the window, background image, quiz state, and compact Home card
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Exercise 1 - Maths Quiz")
@@ -67,20 +67,27 @@ class MathsQuizApp:
         self.quiz_active = False
         self.rules_visible = False
 
-        # Compact centered card to avoid excess empty blue space
+        # Compact centered card so there is less empty blue space
         self.main_frame = tk.Frame(
             self.root,
             bg=self.BG_DARK,
-            padx=16,
-            pady=12,
+            padx=14,
+            pady=10,
             highlightbackground=self.ACCENT_GOLD,
             highlightthickness=2,
         )
-        self.main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.46, relheight=0.52)
+        self._sync_card_size()
 
         self.root.bind("<Configure>", self.on_window_resize)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.displayHome()
+
+    # Adjust card size slightly when rules are expanded or during quiz/results views
+    def _sync_card_size(self, expanded: bool = False):
+        if expanded:
+            self.main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.44, relheight=0.52)
+        else:
+            self.main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.40, relheight=0.40)
 
     # Set custom application window icon if present in the script folder
     def set_icon(self):
@@ -162,15 +169,16 @@ class MathsQuizApp:
     # Display the Home screen with Start Quiz, Rules button, and Exit button
     def displayHome(self):
         self.quiz_active = False
+        self._sync_card_size(expanded=self.rules_visible)
         self.clear_frame()
 
         tk.Label(
             self.main_frame,
             text="MATHS QUIZ",
-            font=(self.FONT_FAMILY, 20, "bold"),
+            font=(self.FONT_FAMILY, 19, "bold"),
             bg=self.BG_DARK,
             fg=self.ACCENT_GOLD,
-        ).pack(pady=(4, 8))
+        ).pack(pady=(2, 6))
 
         if self.best_score > 0:
             tk.Label(
@@ -179,7 +187,7 @@ class MathsQuizApp:
                 font=(self.FONT_FAMILY, 9, "bold"),
                 bg=self.BG_DARK,
                 fg=self.TEXT_LIGHT,
-            ).pack(pady=(0, 6))
+            ).pack(pady=(0, 4))
 
         tk.Button(
             self.main_frame,
@@ -192,9 +200,9 @@ class MathsQuizApp:
             relief="flat",
             cursor="hand2",
             width=20,
-            pady=8,
+            pady=7,
             command=self.displayMenu,
-        ).pack(pady=4)
+        ).pack(pady=3)
 
         tk.Button(
             self.main_frame,
@@ -207,9 +215,9 @@ class MathsQuizApp:
             relief="flat",
             cursor="hand2",
             width=20,
-            pady=7,
+            pady=6,
             command=self.toggle_rules,
-        ).pack(pady=4)
+        ).pack(pady=3)
 
         if self.rules_visible:
             rules_box = tk.Frame(
@@ -242,11 +250,12 @@ class MathsQuizApp:
             width=18,
             pady=6,
             command=self.on_close,
-        ).pack(pady=(6, 2))
+        ).pack(pady=(4, 2))
 
     # Display the difficulty selection menu at the start of a quiz round
     def displayMenu(self):
         self.quiz_active = False
+        self._sync_card_size(expanded=True)
         self.clear_frame()
 
         nav_bar = tk.Frame(self.main_frame, bg=self.BG_DARK)
@@ -356,6 +365,7 @@ class MathsQuizApp:
 
     # Display the current math problem, Entry box, and Submit button
     def displayProblem(self, num1: int, operator: str, num2: int):
+        self._sync_card_size(expanded=True)
         self.clear_frame()
 
         top_bar = tk.Frame(self.main_frame, bg=self.BG_DARK)
@@ -517,6 +527,7 @@ class MathsQuizApp:
     # Display final score, grade, best streak, and Play Again / Home buttons
     def displayResults(self):
         self.quiz_active = False
+        self._sync_card_size(expanded=True)
         self.best_score = max(self.best_score, self.score)
         self.clear_frame()
 
