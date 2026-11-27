@@ -12,7 +12,7 @@ except ImportError:
 
 
 class MathsQuizApp:
-    """Interactive Tkinter Maths Quiz application with Home, Difficulty, Quiz, and Results views."""
+    """Interactive Tkinter Maths Quiz application following brief functions and High First standards."""
 
     TOTAL_QUESTIONS = 10
     FIRST_ATTEMPT_POINTS = 10
@@ -34,11 +34,12 @@ class MathsQuizApp:
 
     FONT_FAMILY = "Tahoma"
 
+    # Initialize the window, background image, quiz state, and Home screen
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Exercise 1 - Maths Quiz")
-        self.root.geometry("660x480")
-        self.root.minsize(600, 450)
+        self.root.geometry("760x540")
+        self.root.minsize(640, 480)
         self.root.configure(bg=self.BG_DARK)
 
         self.set_icon()
@@ -57,8 +58,6 @@ class MathsQuizApp:
         self.attempt = 1
         self.score = 0
         self.best_score = 0
-        self.correct_first_try = 0
-        self.correct_second_try = 0
         self.current_streak = 0
         self.best_streak = 0
         self.num1 = 0
@@ -66,22 +65,24 @@ class MathsQuizApp:
         self.operator = "+"
         self.answer = 0
         self.quiz_active = False
-        self._pending_after_id = None
+        self.rules_visible = False
 
+        # Compact centered card to avoid excess empty blue space
         self.main_frame = tk.Frame(
             self.root,
             bg=self.BG_DARK,
-            padx=20,
-            pady=14,
+            padx=16,
+            pady=12,
             highlightbackground=self.ACCENT_GOLD,
-            highlightthickness=1,
+            highlightthickness=2,
         )
-        self.main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.82, relheight=0.84)
+        self.main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.46, relheight=0.52)
 
         self.root.bind("<Configure>", self.on_window_resize)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.displayHome()
 
+    # Set custom application window icon if present in the script folder
     def set_icon(self):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         icon_path = os.path.join(script_dir, "icon-math_87982.ico")
@@ -92,6 +93,7 @@ class MathsQuizApp:
             except tk.TclError:
                 pass
 
+    # Load background image using Pillow so it can be scaled dynamically
     def load_background_image(self):
         if not PIL_AVAILABLE:
             return
@@ -106,6 +108,7 @@ class MathsQuizApp:
             except Exception:
                 self._bg_source_image = None
 
+    # Resize background image to match current window dimensions
     def render_background_image(self):
         self._resize_after_id = None
         if not PIL_AVAILABLE or self._bg_source_image is None:
@@ -124,6 +127,7 @@ class MathsQuizApp:
         self.bg_label.config(image=self._bg_photo_image)
         self.bg_label.lower()
 
+    # Debounce window resize events to keep resizing smooth
     def on_window_resize(self, event):
         if event.widget is not self.root or self._bg_source_image is None:
             return
@@ -136,21 +140,13 @@ class MathsQuizApp:
 
         self._resize_after_id = self.root.after(80, self.render_background_image)
 
-    def cancel_pending_timer(self):
-        if self._pending_after_id is not None:
-            try:
-                self.root.after_cancel(self._pending_after_id)
-            except ValueError:
-                pass
-            self._pending_after_id = None
-
+    # Clear all widgets inside main_frame before building a new view
     def clear_frame(self):
-        self.cancel_pending_timer()
         for widget in self.main_frame.winfo_children():
             widget.destroy()
 
+    # Clean up pending resize callback and close the application window
     def on_close(self):
-        self.cancel_pending_timer()
         if self._resize_after_id is not None:
             try:
                 self.root.after_cancel(self._resize_after_id)
@@ -158,68 +154,32 @@ class MathsQuizApp:
                 pass
         self.root.destroy()
 
-    # ------------------------------------------------------------------
-    # Navigation & Screen Builders
-    # ------------------------------------------------------------------
+    # Toggle visibility of quiz rules when the user clicks the Rules button
+    def toggle_rules(self):
+        self.rules_visible = not self.rules_visible
+        self.displayHome()
 
+    # Display the Home screen with Start Quiz, Rules button, and Exit button
     def displayHome(self):
-        """Render the application home page."""
         self.quiz_active = False
         self.clear_frame()
 
-        header_frame = tk.Frame(self.main_frame, bg=self.BG_DARK)
-        header_frame.pack(pady=(4, 4))
-
         tk.Label(
-            header_frame,
-            text="MATHS QUIZ STUDIO",
+            self.main_frame,
+            text="MATHS QUIZ",
             font=(self.FONT_FAMILY, 20, "bold"),
             bg=self.BG_DARK,
             fg=self.ACCENT_GOLD,
-        ).pack()
-
-        tk.Label(
-            header_frame,
-            text="Code Lab 2 • Interactive Arithmetic Assessment",
-            font=(self.FONT_FAMILY, 9),
-            bg=self.BG_DARK,
-            fg=self.TEXT_MUTED,
-        ).pack(pady=(2, 0))
-
-        info_card = tk.Frame(
-            self.main_frame,
-            bg=self.PANEL_DARK,
-            padx=16,
-            pady=12,
-            highlightbackground="#8bbbf6",
-            highlightthickness=1,
-        )
-        info_card.pack(fill="x", pady=10)
-
-        rules = [
-            "• 10 questions per session with Addition (+) and Subtraction (-)",
-            "• 1st attempt correct: +10 pts  |  2nd attempt correct: +5 pts",
-            "• Switch back to Home anytime using the top navigation bar",
-        ]
-        for line in rules:
-            tk.Label(
-                info_card,
-                text=line,
-                font=(self.FONT_FAMILY, 9),
-                bg=self.PANEL_DARK,
-                fg=self.TEXT_LIGHT,
-                anchor="w",
-            ).pack(fill="x", pady=2)
+        ).pack(pady=(4, 8))
 
         if self.best_score > 0:
             tk.Label(
-                info_card,
-                text=f"Session Best Score: {self.best_score} / {self.TOTAL_QUESTIONS * self.FIRST_ATTEMPT_POINTS}",
+                self.main_frame,
+                text=f"Best Score: {self.best_score} / {self.TOTAL_QUESTIONS * self.FIRST_ATTEMPT_POINTS}",
                 font=(self.FONT_FAMILY, 9, "bold"),
-                bg=self.PANEL_DARK,
-                fg=self.ACCENT_GOLD,
-                anchor="w",
-            ).pack(fill="x", pady=(6, 0))
+                bg=self.BG_DARK,
+                fg=self.TEXT_LIGHT,
+            ).pack(pady=(0, 6))
 
         tk.Button(
             self.main_frame,
@@ -231,209 +191,125 @@ class MathsQuizApp:
             activeforeground=self.TEXT_DARK,
             relief="flat",
             cursor="hand2",
-            width=18,
-            pady=7,
+            width=20,
+            pady=8,
             command=self.displayMenu,
-        ).pack(pady=(4, 6))
+        ).pack(pady=4)
 
         tk.Button(
             self.main_frame,
-            text="Exit Application",
-            font=(self.FONT_FAMILY, 9),
+            text="Quiz Rules",
+            font=(self.FONT_FAMILY, 10, "bold"),
             bg=self.PANEL_DARK,
-            fg=self.TEXT_MUTED,
-            activebackground="#8bbbf6",
+            fg=self.TEXT_LIGHT,
+            activebackground="#1b3554",
             activeforeground=self.TEXT_LIGHT,
             relief="flat",
             cursor="hand2",
-            width=16,
-            pady=4,
-            command=self.on_close,
-        ).pack()
+            width=20,
+            pady=7,
+            command=self.toggle_rules,
+        ).pack(pady=4)
 
+        if self.rules_visible:
+            rules_box = tk.Frame(
+                self.main_frame,
+                bg=self.PANEL_DARK,
+                padx=10,
+                pady=6,
+                highlightbackground=self.ACCENT_GOLD,
+                highlightthickness=1,
+            )
+            rules_box.pack(fill="x", pady=4)
+            tk.Label(
+                rules_box,
+                text="10 questions (+ / -)\n1st try: +10 pts | 2nd try: +5 pts",
+                font=(self.FONT_FAMILY, 9, "bold"),
+                bg=self.PANEL_DARK,
+                fg=self.TEXT_LIGHT,
+            ).pack()
+
+        tk.Button(
+            self.main_frame,
+            text="Exit",
+            font=(self.FONT_FAMILY, 10, "bold"),
+            bg=self.PANEL_DARK,
+            fg=self.TEXT_MUTED,
+            activebackground="#1b3554",
+            activeforeground=self.TEXT_LIGHT,
+            relief="flat",
+            cursor="hand2",
+            width=18,
+            pady=6,
+            command=self.on_close,
+        ).pack(pady=(6, 2))
+
+    # Display the difficulty selection menu at the start of a quiz round
     def displayMenu(self):
-        """Render the difficulty selection screen with a Home button."""
         self.quiz_active = False
         self.clear_frame()
 
         nav_bar = tk.Frame(self.main_frame, bg=self.BG_DARK)
-        nav_bar.pack(fill="x", pady=(0, 6))
+        nav_bar.pack(fill="x", pady=(0, 4))
 
         tk.Button(
             nav_bar,
             text="← Home",
             font=(self.FONT_FAMILY, 9, "bold"),
             bg=self.PANEL_DARK,
-            fg=self.ACCENT_GOLD,
-            activebackground="#8bbbf6",
-            activeforeground=self.ACCENT_GOLD,
+            fg=self.TEXT_LIGHT,
+            activebackground="#1b3554",
+            activeforeground=self.TEXT_LIGHT,
             relief="flat",
             cursor="hand2",
             padx=10,
-            pady=3,
+            pady=4,
             command=self.displayHome,
         ).pack(side="left")
 
         tk.Label(
             self.main_frame,
-            text="SELECT DIFFICULTY LEVEL",
+            text="DIFFICULTY LEVEL",
             font=(self.FONT_FAMILY, 16, "bold"),
             bg=self.BG_DARK,
             fg=self.ACCENT_GOLD,
-        ).pack(pady=(2, 3))
+        ).pack(pady=(2, 8))
 
-        tk.Label(
-            self.main_frame,
-            text="Choose a level to start your 10-question round:",
-            font=(self.FONT_FAMILY, 9),
-            bg=self.BG_DARK,
-            fg=self.TEXT_MUTED,
-        ).pack(pady=(0, 10))
-
-        options = [
-            ("1. Easy  •  Single Digit (1–9)", "Easy"),
-            ("2. Moderate  •  Double Digit (10–99)", "Moderate"),
-            ("3. Advanced  •  Four Digit (1000–9999)", "Advanced"),
+        levels = [
+            ("Easy (1–9)", "Easy"),
+            ("Moderate (10–99)", "Moderate"),
+            ("Advanced (1000–9999)", "Advanced"),
         ]
 
-        for label_text, level in options:
+        for button_text, level_name in levels:
             tk.Button(
                 self.main_frame,
-                text=label_text,
+                text=button_text,
                 font=(self.FONT_FAMILY, 10, "bold"),
                 bg=self.PANEL_DARK,
                 fg=self.TEXT_LIGHT,
                 activebackground=self.ACCENT_GOLD,
                 activeforeground=self.TEXT_DARK,
-                highlightbackground="#8bbbf6",
-                highlightthickness=1,
                 relief="flat",
                 cursor="hand2",
-                width=32,
+                width=22,
                 pady=7,
-                command=lambda lvl=level: self.start_quiz(lvl),
+                command=lambda lvl=level_name: self.start_quiz(lvl),
             ).pack(pady=4)
 
+    # Confirm before returning to Home mid-quiz so current progress isn't lost by mistake
     def confirm_return_home(self):
-        """Allow returning to Home mid-quiz with confirmation so progress isn't lost accidentally."""
         if self.quiz_active:
-            should_leave = messagebox.askyesno(
+            leave = messagebox.askyesno(
                 "Return to Home",
-                "A quiz is currently in progress. Return to the Home page?",
+                "Leave the current quiz and return to Home?",
                 parent=self.root,
             )
-            if not should_leave:
+            if not leave:
                 return
         self.displayHome()
 
-    def build_quiz_screen(self):
-        """Build the active quiz UI including a mid-session Home button."""
-        self.clear_frame()
-
-        top_bar = tk.Frame(self.main_frame, bg=self.BG_DARK)
-        top_bar.pack(fill="x", pady=(0, 8))
-
-        tk.Button(
-            top_bar,
-            text="← Home",
-            font=(self.FONT_FAMILY, 9, "bold"),
-            bg=self.PANEL_DARK,
-            fg=self.ACCENT_GOLD,
-            activebackground="#8bbbf6",
-            activeforeground=self.ACCENT_GOLD,
-            relief="flat",
-            cursor="hand2",
-            padx=10,
-            pady=3,
-            command=self.confirm_return_home,
-        ).pack(side="left")
-
-        self.q_label = tk.Label(
-            top_bar,
-            text=f"Question 1/{self.TOTAL_QUESTIONS} ({self.difficulty})",
-            font=(self.FONT_FAMILY, 9, "bold"),
-            bg=self.BG_DARK,
-            fg=self.TEXT_LIGHT,
-        )
-        self.q_label.pack(side="left", padx=(10, 0))
-
-        self.score_label = tk.Label(
-            top_bar,
-            text="Score: 0",
-            font=(self.FONT_FAMILY, 9, "bold"),
-            bg=self.BG_DARK,
-            fg=self.ACCENT_GOLD,
-        )
-        self.score_label.pack(side="right")
-
-        problem_card = tk.Frame(
-            self.main_frame,
-            bg=self.CARD_LIGHT,
-            padx=16,
-            pady=12,
-        )
-        problem_card.pack(fill="x", pady=(0, 10))
-
-        self.problem_label = tk.Label(
-            problem_card,
-            text="",
-            font=(self.FONT_FAMILY, 20, "bold"),
-            bg=self.CARD_LIGHT,
-            fg=self.TEXT_DARK,
-        )
-        self.problem_label.pack()
-
-        tk.Label(
-            self.main_frame,
-            text="Enter your answer:",
-            font=(self.FONT_FAMILY, 9),
-            bg=self.BG_DARK,
-            fg=self.TEXT_MUTED,
-        ).pack()
-
-        self.answer_entry = tk.Entry(
-            self.main_frame,
-            font=(self.FONT_FAMILY, 12, "bold"),
-            justify="center",
-            width=14,
-            bg=self.CARD_LIGHT,
-            fg=self.TEXT_DARK,
-            insertbackground=self.TEXT_DARK,
-        )
-        self.answer_entry.pack(pady=5)
-        self.answer_entry.focus_set()
-        self.answer_entry.bind("<Return>", lambda _event: self.check_input())
-
-        self.submit_btn = tk.Button(
-            self.main_frame,
-            text="Submit Answer",
-            font=(self.FONT_FAMILY, 10, "bold"),
-            bg=self.ACCENT_GOLD,
-            fg=self.TEXT_DARK,
-            activebackground=self.ACCENT_GOLD_HOVER,
-            activeforeground=self.TEXT_DARK,
-            relief="flat",
-            cursor="hand2",
-            width=16,
-            pady=6,
-            command=self.check_input,
-        )
-        self.submit_btn.pack(pady=5)
-
-        self.feedback_label = tk.Label(
-            self.main_frame,
-            text="",
-            font=(self.FONT_FAMILY, 9, "bold"),
-            bg=self.BG_DARK,
-            fg=self.TEXT_MUTED,
-            wraplength=460,
-        )
-        self.feedback_label.pack(pady=(4, 0))
-
-    # ------------------------------------------------------------------
-    # Quiz Logic & Evaluation
-    # ------------------------------------------------------------------
-
+    # Determine min and max random integer bounds based on chosen difficulty
     def randomInt(self, level: str) -> int:
         if level == "Easy":
             return random.randint(1, 9)
@@ -441,28 +317,27 @@ class MathsQuizApp:
             return random.randint(10, 99)
         return random.randint(1000, 9999)
 
+    # Randomly decide whether the arithmetic operation is '+' or '-'
     def decideOperation(self) -> str:
         return random.choice(["+", "-"])
 
+    # Compute the expected answer for the generated arithmetic expression
     def compute_expected_answer(self, num1: int, operator: str, num2: int) -> int:
         return num1 + num2 if operator == "+" else num1 - num2
 
+    # Start a fresh 10-question session for the selected difficulty
     def start_quiz(self, difficulty: str):
         self.difficulty = difficulty
         self.question_num = 0
         self.attempt = 1
         self.score = 0
-        self.correct_first_try = 0
-        self.correct_second_try = 0
         self.current_streak = 0
         self.best_streak = 0
         self.quiz_active = True
-
-        self.build_quiz_screen()
         self.next_question()
 
+    # Advance to the next question or display final results after 10 questions
     def next_question(self):
-        self._pending_after_id = None
         if not self.quiz_active:
             return
 
@@ -479,89 +354,154 @@ class MathsQuizApp:
 
         self.displayProblem(self.num1, self.operator, self.num2)
 
+    # Display the current math problem, Entry box, and Submit button
     def displayProblem(self, num1: int, operator: str, num2: int):
-        self.q_label.config(text=f"Question {self.question_num}/{self.TOTAL_QUESTIONS} ({self.difficulty})")
-        self.score_label.config(text=f"Score: {self.score}")
-        self.problem_label.config(text=f"{num1} {operator} {num2} =")
-        self.feedback_label.config(text="", fg=self.TEXT_MUTED)
-        self.answer_entry.config(state="normal")
-        self.submit_btn.config(state="normal")
-        self.answer_entry.delete(0, tk.END)
-        self.answer_entry.focus_set()
+        self.clear_frame()
 
+        top_bar = tk.Frame(self.main_frame, bg=self.BG_DARK)
+        top_bar.pack(fill="x", pady=(0, 6))
+
+        tk.Button(
+            top_bar,
+            text="← Home",
+            font=(self.FONT_FAMILY, 9, "bold"),
+            bg=self.PANEL_DARK,
+            fg=self.TEXT_LIGHT,
+            activebackground="#1b3554",
+            activeforeground=self.TEXT_LIGHT,
+            relief="flat",
+            cursor="hand2",
+            padx=9,
+            pady=3,
+            command=self.confirm_return_home,
+        ).pack(side="left")
+
+        tk.Label(
+            top_bar,
+            text=f"Q {self.question_num}/{self.TOTAL_QUESTIONS}",
+            font=(self.FONT_FAMILY, 9, "bold"),
+            bg=self.BG_DARK,
+            fg=self.TEXT_LIGHT,
+        ).pack(side="left", padx=(8, 0))
+
+        tk.Label(
+            top_bar,
+            text=f"Score: {self.score}",
+            font=(self.FONT_FAMILY, 9, "bold"),
+            bg=self.BG_DARK,
+            fg=self.ACCENT_GOLD,
+        ).pack(side="right")
+
+        problem_card = tk.Frame(
+            self.main_frame,
+            bg=self.CARD_LIGHT,
+            padx=12,
+            pady=10,
+        )
+        problem_card.pack(fill="x", pady=(2, 8))
+
+        tk.Label(
+            problem_card,
+            text=f"{num1} {operator} {num2} =",
+            font=(self.FONT_FAMILY, 19, "bold"),
+            bg=self.CARD_LIGHT,
+            fg=self.TEXT_DARK,
+        ).pack()
+
+        self.answer_entry = tk.Entry(
+            self.main_frame,
+            font=(self.FONT_FAMILY, 11, "bold"),
+            justify="center",
+            width=14,
+            bg=self.CARD_LIGHT,
+            fg=self.TEXT_DARK,
+            insertbackground=self.TEXT_DARK,
+        )
+        self.answer_entry.pack(pady=4)
+        self.answer_entry.focus_set()
+        self.answer_entry.bind("<Return>", lambda _event: self.check_input())
+
+        tk.Button(
+            self.main_frame,
+            text="Submit Answer",
+            font=(self.FONT_FAMILY, 10, "bold"),
+            bg=self.ACCENT_GOLD,
+            fg=self.TEXT_DARK,
+            activebackground=self.ACCENT_GOLD_HOVER,
+            activeforeground=self.TEXT_DARK,
+            relief="flat",
+            cursor="hand2",
+            width=18,
+            pady=7,
+            command=self.check_input,
+        ).pack(pady=6)
+
+    # Validate user input and pass the integer answer to isCorrect
     def check_input(self):
         if not self.quiz_active:
             return
 
-        typed = self.answer_entry.get().strip()
-        if not typed:
-            self.feedback_label.config(text="Please enter an answer first.", fg=self.WARNING_COLOR)
+        raw_value = self.answer_entry.get().strip()
+        if not raw_value:
+            messagebox.showwarning("Input Required", "Please enter an answer first.", parent=self.root)
             self.answer_entry.focus_set()
             return
 
         try:
-            guess = int(typed)
+            user_guess = int(raw_value)
         except ValueError:
-            self.feedback_label.config(
-                text="Invalid input. Please enter a whole number.",
-                fg=self.ERROR_COLOR,
-            )
+            messagebox.showerror("Invalid Input", "Please enter a valid whole number.", parent=self.root)
             self.answer_entry.delete(0, tk.END)
             self.answer_entry.focus_set()
             return
 
-        self.isCorrect(guess)
+        self.isCorrect(user_guess)
 
-    def _schedule_next(self, delay_ms: int):
-        self.answer_entry.config(state="disabled")
-        self.submit_btn.config(state="disabled")
-        self._pending_after_id = self.root.after(delay_ms, self.next_question)
-
+    # Check whether the user's answer is right and show pop-up feedback for each attempt
     def isCorrect(self, user_answer: int) -> bool:
         if user_answer == self.answer:
-            points = self.FIRST_ATTEMPT_POINTS if self.attempt == 1 else self.SECOND_ATTEMPT_POINTS
-            self.score += points
+            points_earned = (
+                self.FIRST_ATTEMPT_POINTS if self.attempt == 1 else self.SECOND_ATTEMPT_POINTS
+            )
+            self.score += points_earned
             self.current_streak += 1
             self.best_streak = max(self.best_streak, self.current_streak)
 
-            if self.attempt == 1:
-                self.correct_first_try += 1
-            else:
-                self.correct_second_try += 1
-
-            self.score_label.config(text=f"Score: {self.score}")
-            self.feedback_label.config(
-                text=f"Correct! +{points} points (Streak: {self.current_streak})",
-                fg=self.SUCCESS_COLOR,
+            messagebox.showinfo(
+                "Correct!",
+                f"Correct! You earned {points_earned} points.",
+                parent=self.root,
             )
-            self._schedule_next(750)
+            self.next_question()
             return True
 
         self.current_streak = 0
+
+        # First wrong attempt: pop-up tells user they can try again for 5 points
         if self.attempt == 1:
             self.attempt = 2
-            self.feedback_label.config(
-                text=f"Not quite. Try one more time for {self.SECOND_ATTEMPT_POINTS} points.",
-                fg=self.WARNING_COLOR,
+            messagebox.showwarning(
+                "Try Again",
+                f"Not quite! Try one more time — you can earn {self.SECOND_ATTEMPT_POINTS} points on your second attempt.",
+                parent=self.root,
             )
             self.answer_entry.delete(0, tk.END)
             self.answer_entry.focus_set()
             return False
 
-        self.feedback_label.config(
-            text=f"Incorrect. The correct answer was {self.answer}.",
-            fg=self.ERROR_COLOR,
+        # Second wrong attempt: show correct answer in pop-up and move to next question
+        messagebox.showinfo(
+            "Incorrect",
+            f"Incorrect. The correct answer was {self.answer}.",
+            parent=self.root,
         )
-        self._schedule_next(1000)
+        self.next_question()
         return False
 
-    # ------------------------------------------------------------------
-    # Results & Grading
-    # ------------------------------------------------------------------
-
-    def calculate_grade(self, score: int) -> str:
+    # Calculate final grade from the percentage of total possible points
+    def calculate_grade(self, final_score: int) -> str:
         max_score = self.TOTAL_QUESTIONS * self.FIRST_ATTEMPT_POINTS
-        percentage = (score / max_score) * 100
+        percentage = (final_score / max_score) * 100
         if percentage >= 90:
             return "A+"
         if percentage >= 80:
@@ -574,60 +514,51 @@ class MathsQuizApp:
             return "D"
         return "F"
 
+    # Display final score, grade, best streak, and Play Again / Home buttons
     def displayResults(self):
-        """Display the final performance summary, grade, and navigation buttons."""
         self.quiz_active = False
         self.best_score = max(self.best_score, self.score)
         self.clear_frame()
 
         max_score = self.TOTAL_QUESTIONS * self.FIRST_ATTEMPT_POINTS
         grade = self.calculate_grade(self.score)
-        total_solved = self.correct_first_try + self.correct_second_try
 
         tk.Label(
             self.main_frame,
-            text="QUIZ COMPLETED",
-            font=(self.FONT_FAMILY, 18, "bold"),
+            text="QUIZ RESULTS",
+            font=(self.FONT_FAMILY, 17, "bold"),
             bg=self.BG_DARK,
             fg=self.ACCENT_GOLD,
-        ).pack(pady=(2, 4))
+        ).pack(pady=(2, 6))
 
-        summary_card = tk.Frame(
+        result_box = tk.Frame(
             self.main_frame,
             bg=self.PANEL_DARK,
-            padx=16,
-            pady=12,
-            highlightbackground="#8bbbf6",
+            padx=12,
+            pady=10,
+            highlightbackground=self.ACCENT_GOLD,
             highlightthickness=1,
         )
-        summary_card.pack(fill="x", pady=6)
+        result_box.pack(fill="x", pady=4)
 
         tk.Label(
-            summary_card,
-            text=f"Final Score: {self.score} / {max_score}   •   Grade: {grade}",
-            font=(self.FONT_FAMILY, 13, "bold"),
+            result_box,
+            text=f"Score: {self.score} / {max_score}  •  Grade: {grade}",
+            font=(self.FONT_FAMILY, 11, "bold"),
             bg=self.PANEL_DARK,
             fg=self.TEXT_LIGHT,
-        ).pack(pady=(0, 6))
+        ).pack(pady=(0, 3))
 
         tk.Label(
-            summary_card,
-            text=(
-                f"Solved: {total_solved}/{self.TOTAL_QUESTIONS}  "
-                f"(1st Try: {self.correct_first_try}, 2nd Try: {self.correct_second_try})  •  "
-                f"Best Streak: {self.best_streak}"
-            ),
-            font=(self.FONT_FAMILY, 9),
+            result_box,
+            text=f"Best Streak: {self.best_streak}",
+            font=(self.FONT_FAMILY, 9, "bold"),
             bg=self.PANEL_DARK,
             fg=self.TEXT_MUTED,
-            wraplength=450,
         ).pack()
 
-        btn_row = tk.Frame(self.main_frame, bg=self.BG_DARK)
-        btn_row.pack(pady=10)
-
         tk.Button(
-            btn_row,
+            self.main_frame,
             text="Play Again",
             font=(self.FONT_FAMILY, 10, "bold"),
             bg=self.ACCENT_GOLD,
@@ -636,27 +567,25 @@ class MathsQuizApp:
             activeforeground=self.TEXT_DARK,
             relief="flat",
             cursor="hand2",
-            width=14,
-            pady=6,
+            width=18,
+            pady=7,
             command=self.displayMenu,
-        ).grid(row=0, column=0, padx=6)
+        ).pack(pady=(8, 4))
 
         tk.Button(
-            btn_row,
+            self.main_frame,
             text="← Home",
             font=(self.FONT_FAMILY, 10, "bold"),
             bg=self.PANEL_DARK,
             fg=self.TEXT_LIGHT,
-            activebackground="#8bbbf6",
-            activeforeground=self.ACCENT_GOLD,
+            activebackground="#1b3554",
+            activeforeground=self.TEXT_LIGHT,
             relief="flat",
             cursor="hand2",
-            width=13,
+            width=18,
             pady=6,
             command=self.displayHome,
-        ).grid(row=0, column=1, padx=6)
-
-        self.main_frame.update_idletasks()
+        ).pack()
 
 
 if __name__ == "__main__":
